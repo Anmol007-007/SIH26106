@@ -1,37 +1,29 @@
 from __future__ import annotations
-
 import ipaddress
 import json
 import os
 import socket
 from functools import lru_cache
 from typing import Optional
-
 try:
     import geoip2.database
     _HAS_GEOIP2 = True
 except ImportError:
     _HAS_GEOIP2 = False
-
 try:
     import requests
     _HAS_REQUESTS = True
 except ImportError:
     _HAS_REQUESTS = False
-
-
 IP_API_FIELDS = (
     "status,message,country,countryCode,regionName,city,lat,lon,timezone,"
     "isp,org,as,asname,reverse,mobile,proxy,hosting,query"
 )
-
 _DC_KEYWORDS = (
     "amazon", "aws", "google cloud", "microsoft azure", "azure", "digitalocean",
     "ovh", "hetzner", "linode", "vultr", "contabo", "alibaba", "tencent",
     "hosting", "datacenter", "data center", "server", "cloud", "colo", "vps",
 )
-
-
 def _blank_result(ip: str) -> dict:
     return {
         "ip": ip,
@@ -44,8 +36,6 @@ def _blank_result(ip: str) -> dict:
         "sources": [],
         "error": None,
     }
-
-
 @lru_cache(maxsize=4096)
 def reverse_dns(ip: str, timeout: float = 3.0) -> Optional[str]:
     try:
@@ -53,8 +43,6 @@ def reverse_dns(ip: str, timeout: float = 3.0) -> Optional[str]:
         return socket.gethostbyaddr(ip)[0]
     except (socket.herror, socket.gaierror, OSError):
         return None
-
-
 def _lookup_maxmind(ip: str, db_dir: str) -> Optional[dict]:
     if not _HAS_GEOIP2:
         return None
@@ -85,8 +73,6 @@ def _lookup_maxmind(ip: str, db_dir: str) -> Optional[dict]:
     except Exception:
         return out or None
     return out or None
-
-
 def _lookup_ip_api(ip: str, timeout: float = 6.0) -> Optional[dict]:
     if not _HAS_REQUESTS:
         return None
@@ -116,8 +102,6 @@ def _lookup_ip_api(ip: str, timeout: float = 6.0) -> Optional[dict]:
         }
     except Exception:
         return None
-
-
 def _classify_infrastructure(res: dict) -> str:
     if res.get("is_proxy_or_vpn"):
         return "proxy/vpn/anonymizer"
@@ -131,13 +115,10 @@ def _classify_infrastructure(res: dict) -> str:
     if res.get("isp") or res.get("asn_name"):
         return "residential/business ISP"
     return "unknown"
-
-
 @lru_cache(maxsize=4096)
 def enrich_ip(ip: str, db_dir: str | None = None, use_online: bool = True) -> str:
     db_dir = db_dir or os.environ.get("GEOLITE2_DIR", "./geolite2")
     res = _blank_result(ip)
-
     try:
         obj = ipaddress.ip_address(ip)
         if obj.is_private or obj.is_loopback or obj.is_link_local:
@@ -147,12 +128,10 @@ def enrich_ip(ip: str, db_dir: str | None = None, use_online: bool = True) -> st
     except ValueError:
         res["error"] = "invalid IP address"
         return json.dumps(res)
-
     mm = _lookup_maxmind(ip, db_dir)
     if mm:
         res.update({k: v for k, v in mm.items() if v is not None})
         res["sources"].append("maxmind_geolite2")
-
     if use_online:
         api = _lookup_ip_api(ip)
         if api:
@@ -160,17 +139,13 @@ def enrich_ip(ip: str, db_dir: str | None = None, use_online: bool = True) -> st
                 if v is not None and (res.get(k) is None or k in ("is_hosting", "is_proxy_or_vpn", "is_mobile")):
                     res[k] = v
             res["sources"].append("ip-api.com")
-
     if res.get("reverse_dns") is None:
         res["reverse_dns"] = reverse_dns(ip)
         if res["reverse_dns"]:
             res["sources"].append("ptr_lookup")
-
     res["infrastructure_type"] = _classify_infrastructure(res)
     if not res["sources"]:
         res["error"] = "no geo data available (offline and no local GeoLite2 DB found)"
     return json.dumps(res)
-
-
 def lookup_ip(ip: str, db_dir: str | None = None, use_online: bool = True) -> dict:
     return json.loads(enrich_ip(ip, db_dir, use_online))

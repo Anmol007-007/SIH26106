@@ -5,32 +5,24 @@ import os
 import sys
 from pathlib import Path
 from typing import List, Dict, Any
-
 from trace_engine import analyze_email
-
-
 def extract_location_info(file_path: Path, geolite_dir: str = None, offline: bool = False) -> Dict[str, Any]:
     try:
         with open(file_path, "rb") as f:
             raw = f.read()
         report = analyze_email(raw, geolite_dir=geolite_dir, use_online_geo=not offline)
-
         meta = report.get("message_meta", {})
         origin = report.get("origin", {})
         geo = origin.get("geo") or {}
         risk = report.get("risk", {})
-
         sender = meta.get("from", "Unknown")
         subject = meta.get("subject", "No Subject")
         source_ip = origin.get("probable_source_ip", "N/A")
-        
         city = geo.get("city") or "Unknown City"
         region = geo.get("region") or ""
         country = geo.get("country") or "Unknown Country"
-        
         loc_parts = [p for p in [city, region, country] if p and p != "Unknown City"]
         location_str = ", ".join(loc_parts) if loc_parts else country
-
         return {
             "file": file_path.name,
             "from_email": sender,
@@ -64,8 +56,6 @@ def extract_location_info(file_path: Path, geolite_dir: str = None, offline: boo
             "risk_score": 0,
             "status": f"Failed: {str(e)}"
         }
-
-
 def process_batch(
     input_path: str,
     output_file: str,
@@ -75,7 +65,6 @@ def process_batch(
 ):
     inp = Path(input_path)
     eml_files: List[Path] = []
-
     if inp.is_dir():
         eml_files = [f for f in inp.rglob("*") if f.is_file() and f.suffix.lower() == ".eml"]
         if not eml_files:
@@ -96,22 +85,17 @@ def process_batch(
     else:
         print(f"[X] Error: Input '{input_path}' does not exist.", flush=True)
         sys.exit(1)
-
     if not eml_files:
         print(f"[!] No email files found to process in '{input_path}'.", flush=True)
         return
-
     print(f"[*] Found {len(eml_files)} email(s) to process. Tracing locations...\n", flush=True)
-
     results = []
     for idx, eml in enumerate(eml_files, 1):
         print(f"[{idx}/{len(eml_files)}] Processing: {eml.name} ...", end=" ", flush=True)
         res = extract_location_info(eml, geolite_dir=geolite_dir, offline=offline)
         results.append(res)
         print(f"-> {res['from_email']} | Location: {res['full_location']}")
-
     out_p = Path(output_file)
-
     if output_format.lower() == "json" or out_p.suffix.lower() == ".json":
         with open(out_p, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2, ensure_ascii=False)
@@ -141,10 +125,7 @@ def process_batch(
             writer.writeheader()
             for r in results:
                 writer.writerow(r)
-
     print(f"\n[+] Successfully saved {len(results)} records to '{output_file}'!")
-
-
 def main():
     parser = argparse.ArgumentParser(description="Batch Email Location Extractor & Tracer")
     parser.add_argument(
@@ -174,7 +155,6 @@ def main():
         default=None,
         help="Folder with GeoLite2 .mmdb files"
     )
-
     args = parser.parse_args()
     process_batch(
         input_path=args.input,
@@ -183,7 +163,5 @@ def main():
         geolite_dir=args.geolite_dir,
         offline=args.offline
     )
-
-
 if __name__ == "__main__":
     main()

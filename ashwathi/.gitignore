@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Conda
+*.egg-info/
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+
+# Sensitive/generated test data (regenerated locally, not needed in repo)
+*.eml
+sample_parsed.json
+sample_detected.json
+
+# Environment variables / secrets
+.env

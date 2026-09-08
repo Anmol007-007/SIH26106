@@ -1,13 +1,10 @@
 from __future__ import annotations
-
 import ipaddress
 import re
 from dataclasses import dataclass, asdict
 from email.message import Message
 from email.utils import parsedate_to_datetime
 from typing import Optional
-
-
 @dataclass
 class Hop:
     index: int
@@ -20,11 +17,8 @@ class Hop:
     is_private_ip: bool = False
     is_tls: bool = False
     delay_seconds: Optional[float] = None
-
     def to_dict(self) -> dict:
         return asdict(self)
-
-
 _FROM_RE = re.compile(
     r"from\s+(?P<host>\[?[A-Za-z0-9._:\-]+\]?)"
     r"(?:\s+\((?P<paren>[^)]*)\))?",
@@ -32,29 +26,22 @@ _FROM_RE = re.compile(
 )
 _BY_RE = re.compile(r"\bby\s+(?P<by>[A-Za-z0-9._\-]+)", re.IGNORECASE)
 _WITH_RE = re.compile(r"\bwith\s+(?P<proto>[A-Za-z0-9+\-]+)", re.IGNORECASE)
-
 _IP_RE = re.compile(
     r"(?:(?<=\[)|(?<=\s)|(?<=\()|^)"
     r"(?P<ip>(?:\d{1,3}\.){3}\d{1,3}|[A-Fa-f0-9:]{2,45}:[A-Fa-f0-9:]*)"
 )
-
-
 def _valid_ip(candidate: str) -> Optional[str]:
     try:
         ipaddress.ip_address(candidate.strip("[]"))
         return candidate.strip("[]")
     except ValueError:
         return None
-
-
 def _is_private(ip: str) -> bool:
     try:
         obj = ipaddress.ip_address(ip)
         return obj.is_private or obj.is_loopback or obj.is_link_local or obj.is_reserved
     except ValueError:
         return True
-
-
 def _extract_ip_from_header(value: str) -> Optional[str]:
     m = _FROM_RE.search(value)
     if m:
@@ -73,8 +60,6 @@ def _extract_ip_from_header(value: str) -> Optional[str]:
         if ip:
             return ip
     return None
-
-
 def _extract_timestamp(value: str) -> Optional[str]:
     if ";" not in value:
         return None
@@ -84,17 +69,12 @@ def _extract_timestamp(value: str) -> Optional[str]:
         return dt.isoformat()
     except Exception:
         return None
-
-
 def parse_hops(msg: Message) -> list[Hop]:
     hops: list[Hop] = []
     received_headers = msg.get_all("Received") or []
-
     for i, raw in enumerate(received_headers):
         value = re.sub(r"\s+", " ", str(raw)).strip()
-
         hop = Hop(index=i, raw=value)
-
         m = _FROM_RE.search(value)
         if m:
             hop.from_host = m.group("host").strip("[]")
@@ -105,14 +85,11 @@ def parse_hops(msg: Message) -> list[Hop]:
         if w:
             hop.protocol = w.group("proto").upper()
             hop.is_tls = "TLS" in hop.protocol or hop.protocol == "ESMTPS"
-
         hop.from_ip = _extract_ip_from_header(value)
         if hop.from_ip:
             hop.is_private_ip = _is_private(hop.from_ip)
-
         hop.timestamp = _extract_timestamp(value)
         hops.append(hop)
-
     for i in range(len(hops) - 1):
         t_now, t_prev = hops[i].timestamp, hops[i + 1].timestamp
         if t_now and t_prev:
@@ -123,12 +100,9 @@ def parse_hops(msg: Message) -> list[Hop]:
             except Exception:
                 pass
     return hops
-
-
 def find_origin_ip(hops: list[Hop]) -> tuple[Optional[str], Optional[Hop], list[str]]:
     notes: list[str] = []
     origin_ip, origin_hop = None, None
-
     for hop in reversed(hops):
         if hop.from_ip and not hop.is_private_ip:
             origin_ip, origin_hop = hop.from_ip, hop
@@ -138,7 +112,6 @@ def find_origin_ip(hops: list[Hop]) -> tuple[Optional[str], Optional[Hop], list[
                 f"Hop {hop.index}: private/internal IP {hop.from_ip} skipped "
                 "(mail still inside an internal network)."
             )
-
     for hop in hops:
         if hop.delay_seconds is not None and hop.delay_seconds < -30:
             notes.append(
@@ -151,8 +124,6 @@ def find_origin_ip(hops: list[Hop]) -> tuple[Optional[str], Optional[Hop], list[
                     f"Hop {hop.index}: sender identified only by IP literal "
                     f"[{hop.from_ip}] with no hostname — common for botnet/direct-to-MX spam."
                 )
-
     if origin_ip is None:
         notes.append("No public origin IP could be extracted from Received headers.")
-
     return origin_ip, origin_hop, notes

@@ -1,0 +1,18 @@
+{
+  "id": "b09c070e9b2fd1eba2bd0c0dcc6fb2472c56b2e29bfae37eaca6ebd224c1c1e1",
+  "subject": "URGENT: Your account will be blocked - verify KYC now",
+  "email": "victim@college.ac.in",
+  "sender": "alerts@sbi.co.in",
+  "phone": "",
+  "ip": "185.220.101.45",
+  "name": "SBI Bank Alerts",
+  "country": "Germany",
+  "city": "Brandenburg an der Havel",
+  "risk_score": 85,
+  "classification": "Phishing",
+  "status": "High Risk",
+  "overall_assessment": {
+    "combined_threat_score": 85,
+    "overall_verdict": "PHISHING_MALICIOUS"
+  }
+}

@@ -1,8 +1,25 @@
+# Environments
 venv/
 .venv/
+env/
+my/venv/
+
+# Byte-compiled / cache files
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
+
+# Local databases & logs
+*.db
+*.sqlite3
+*.log
+
+# Sensitive credentials
+.env
+soumya/.env
+*.env.local
+
+# OS files
 .DS_Store
-.idea/
-.vscode/
+Thumbs.db

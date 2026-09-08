@@ -1,19 +1,14 @@
 from __future__ import annotations
-
 import email
 import email.policy
 from typing import Union
-
 from .hop_parser import parse_hops, find_origin_ip
 from .auth_checker import check_authentication
 from .geo_intel import lookup_ip
-
-
 def _risk_assessment(auth: dict, trace_notes: list[str], origin_geo: dict | None,
                      hops_count: int) -> dict:
     score = 0
     reasons: list[str] = []
-
     if auth["summary"] == "failed":
         score += 45
         reasons.append("Email authentication failed (SPF/DKIM/DMARC).")
@@ -23,12 +18,10 @@ def _risk_assessment(auth: dict, trace_notes: list[str], origin_geo: dict | None
     elif auth["summary"] == "partially_authenticated":
         score += 10
         reasons.append("Only partial authentication (not all of SPF/DKIM/DMARC passed).")
-
     for f in auth["flags"]:
         if "impersonation" in f or "spoofing" in f.lower():
             score += 10
             reasons.append(f)
-
     for n in trace_notes:
         if "NEGATIVE time delta" in n:
             score += 15
@@ -36,11 +29,9 @@ def _risk_assessment(auth: dict, trace_notes: list[str], origin_geo: dict | None
         if "IP literal" in n:
             score += 10
             reasons.append(n)
-
     if hops_count == 0:
         score += 20
         reasons.append("No Received headers at all — message may be locally injected or forged.")
-
     if origin_geo:
         infra = origin_geo.get("infrastructure_type", "")
         if origin_geo.get("is_proxy_or_vpn"):
@@ -53,38 +44,29 @@ def _risk_assessment(auth: dict, trace_notes: list[str], origin_geo: dict | None
         if origin_geo.get("reverse_dns") is None and origin_geo.get("error") is None:
             score += 5
             reasons.append("Origin IP has no reverse DNS (PTR) record.")
-
     score = min(score, 100)
     level = "high" if score >= 60 else "medium" if score >= 30 else "low"
     return {"trace_risk_score": score, "trace_risk_level": level, "reasons": reasons}
-
-
 def analyze_email(raw: Union[bytes, str], geolite_dir: str | None = None,
                   use_online_geo: bool = True) -> dict:
     if isinstance(raw, str):
         raw = raw.encode("utf-8", errors="replace")
     msg = email.message_from_bytes(raw, policy=email.policy.default)
-
     hops = parse_hops(msg)
     origin_ip, origin_hop, trace_notes = find_origin_ip(hops)
-
     auth = check_authentication(msg)
-
     spf_ip = auth["spf"].get("client_ip")
     if spf_ip and origin_ip and spf_ip != origin_ip:
         trace_notes.append(
             f"SPF client-ip ({spf_ip}) differs from bottom-hop IP ({origin_ip}). "
             f"Reporting bottom-hop as origin but flagging the edge IP too."
         )
-
     origin_geo = None
     if origin_ip:
         origin_geo = lookup_ip(origin_ip, geolite_dir, use_online_geo)
-
     edge_geo = None
     if spf_ip and spf_ip != origin_ip:
         edge_geo = lookup_ip(spf_ip, geolite_dir, use_online_geo)
-
     hop_route = []
     for hop in reversed(hops):
         entry = hop.to_dict()
@@ -96,9 +78,7 @@ def analyze_email(raw: Union[bytes, str], geolite_dir: str | None = None,
         else:
             entry["geo"] = None
         hop_route.append(entry)
-
     risk = _risk_assessment(auth, trace_notes, origin_geo, len(hops))
-
     return {
         "module": "trace_engine",
         "version": "0.1.0",
@@ -125,8 +105,6 @@ def analyze_email(raw: Union[bytes, str], geolite_dir: str | None = None,
         "authentication": auth,
         "risk": risk,
     }
-
-
 def _origin_confidence(origin_hop, auth: dict, notes: list[str]) -> str:
     if origin_hop is None:
         return "low"
