@@ -1,0 +1,26 @@
+Delivered-To: victim@college.ac.in
+Received: from mail-ed1-f45.google.com (mail-ed1-f45.google.com [209.85.128.176])
+        by mx.college.ac.in with ESMTPS id abc123xyz
+        for <victim@college.ac.in>;
+        Mon, 01 Sep 2025 10:12:05 +0530
+Received: by mail-ed1-f45.google.com with SMTP id 4fb0e123456
+        for <victim@college.ac.in>;
+        Mon, 01 Sep 2025 10:12:03 +0530
+Authentication-Results: mx.college.ac.in;
+       spf=pass (sender IP is 209.85.128.176) smtp.mailfrom=professor.kumar@gmail.com;
+       dkim=pass header.d=gmail.com header.s=20230601;
+       dmarc=pass (p=NONE) header.from=gmail.com
+Received-SPF: pass (domain of professor.kumar@gmail.com designates 209.85.128.176 as permitted sender) client-ip=209.85.128.176;
+From: Prof Kumar <professor.kumar@gmail.com>
+To: Student <victim@college.ac.in>
+Subject: Project Discussion on SIH Submissions
+Date: Mon, 01 Sep 2025 10:12:00 +0530
+Message-ID: <CA+xyz123@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+
+Hi Team,
+
+Please review the attached project schedule for the upcoming review.
+
+Regards,
+Prof. Kumar

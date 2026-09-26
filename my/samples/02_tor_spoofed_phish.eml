@@ -1,0 +1,25 @@
+Delivered-To: victim@college.ac.in
+Received: from tor-exit-node.privacy-guard.org (unknown [185.220.101.45])
+        by mx.college.ac.in with ESMTP id q99si112233
+        for <victim@college.ac.in>;
+        Mon, 01 Sep 2025 14:33:10 +0530
+Authentication-Results: mx.college.ac.in;
+       spf=fail (sender IP is 185.220.101.45) smtp.mailfrom=support@sbi-online-alerts.com;
+       dkim=fail;
+       dmarc=fail (p=REJECT) header.from=sbi.co.in
+Received-SPF: fail (domain of support@sbi-online-alerts.com does not designate 185.220.101.45 as permitted sender) client-ip=185.220.101.45;
+Return-Path: <support@sbi-online-alerts.com>
+From: State Bank of India <alerts@sbi.co.in>
+Reply-To: phisher-collect@darkmail.onion
+To: victim@college.ac.in
+Subject: URGENT: Complete NetBanking KYC or Account Will Be Suspended
+Date: Mon, 01 Sep 2025 14:32:55 +0530
+Message-ID: <threat9881@sbi-online-alerts.com>
+Content-Type: text/plain; charset="UTF-8"
+
+Dear Customer,
+
+Your State Bank of India account has been flagged for non-compliance.
+Kindly update your pan and aadhaar KYC immediately at http://185.220.101.45/sbi-kyc
+
+SBI Security Operations

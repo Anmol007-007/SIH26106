@@ -1,58 +1,70 @@
-import argparse
-import json
-import sys
+from __future__ import annotations
+import argparse, json, sys
+from pathlib import Path
 from trace_engine import analyze_email
-def main() -> None:
-    ap = argparse.ArgumentParser(description="SIH26106 trace engine CLI")
-    ap.add_argument("eml_file", help="path to a raw .eml file")
-    ap.add_argument("--offline", action="store_true",
-                    help="skip online ip-api.com lookups (use only local GeoLite2)")
-    ap.add_argument("--geolite-dir", default=None, help="folder with GeoLite2 .mmdb files")
-    ap.add_argument("--json", action="store_true", help="print full JSON report")
-    args = ap.parse_args()
-    with open(args.eml_file, "rb") as f:
-        raw = f.read()
-    report = analyze_email(raw, geolite_dir=args.geolite_dir,
-                           use_online_geo=not args.offline)
-    if args.json:
+
+def print_single_report(report: dict, is_json: bool = False):
+    if is_json:
         print(json.dumps(report, indent=2, default=str))
         return
-    m = report["message_meta"]
-    o = report["origin"]
-    a = report["authentication"]
-    r = report["risk"]
+    m, o, a, r, s = report["message_meta"], report["origin"], report["authentication"], report["risk"], report.get("sender_location_estimate", {})
     print("=" * 72)
-    print(f" Subject : {m['subject']}")
-    print(f" From    : {m['from']}")
-    print(f" Date    : {m['date']}")
+    print(f" Subject : {m['subject']}\n From    : {m['from']}\n Date    : {m['date']}")
     print("=" * 72)
     print("\n--- DELIVERY PATH (origin -> inbox) " + "-" * 34)
-    for hop in report["delivery_path"]["hops"]:
-        geo = hop.get("geo")
-        loc = f"{geo['country']}, {geo['city'] or '?'} | {geo['isp'] or '?'} | {geo['infrastructure_type']}" if geo else "(no public IP)"
-        tls = "TLS" if hop["is_tls"] else "plain"
-        print(f"  hop {hop['index']:>2}: {hop['from_host'] or '?':<35} "
-              f"ip={hop['from_ip'] or '-':<16} [{tls}]")
-        print(f"          {loc}")
-    for note in report["delivery_path"]["notes"]:
-        print(f"  [!] {note}")
-    print("\n--- PROBABLE ORIGIN " + "-" * 50)
-    print(f"  Source IP  : {o['probable_source_ip']}  (confidence: {o['confidence']})")
-    g = o["geo"]
-    if g:
-        print(f"  Location   : {g.get('city')}, {g.get('region')}, {g.get('country')}")
-        print(f"  ISP / ASN  : {g.get('isp')} / {g.get('asn')} ({g.get('asn_name')})")
-        print(f"  Infra type : {g.get('infrastructure_type')}")
-        print(f"  Reverse DNS: {g.get('reverse_dns')}")
-    print("\n--- AUTHENTICATION " + "-" * 51)
-    print(f"  SPF={a['spf']['result']}  DKIM={a['dkim']['result']}  "
-          f"DMARC={a['dmarc']['result']}  =>  {a['summary'].upper()}")
-    for f_ in a["flags"]:
-        print(f"  [!] {f_}")
-    print("\n--- TRACE RISK " + "-" * 55)
-    print(f"  Score: {r['trace_risk_score']}/100  ({r['trace_risk_level'].upper()})")
-    for reason in r["reasons"]:
-        print(f"   * {reason}")
+    for h in report["delivery_path"]["hops"]:
+        geo = h.get("geo")
+        loc = f"{geo['country']}, {geo['city'] or '?'} | {geo['isp'] or '?'}" if geo else "(no public IP)"
+        print(f"  hop {h['index']:>2}: {h['from_host'] or '?':<35} ip={h['from_ip'] or '-':<16} [{'TLS' if h['is_tls'] else 'plain'}]\n          {loc}")
+    for n in report["delivery_path"]["notes"]:
+        print(f"  [!] {n}")
+
+    print("\n--- PROBABLE ORIGIN (Stage B) " + "-" * 42)
+    print(f"  Source IP    : {o['probable_source_ip']} (confidence: {o['confidence']})\n  Origin Basis : {o.get('origin_basis')} | Via Provider: {o.get('via_provider')}")
+    if o.get("attribution_note"): print(f"  Note         : {o.get('attribution_note')}")
+    g = o.get("geo")
+    if g: print(f"  Location     : {g.get('city')}, {g.get('country')} | ISP: {g.get('isp')} | Infra: {g.get('infrastructure_type')}")
+
+    if s and s.get("primary_estimate"):
+        pe = s["primary_estimate"]
+        print("\n--- SENDER LOCATION ESTIMATE (Stage E) " + "-" * 33)
+        print(f"  Estimated Loc: {pe.get('city') or ''} {pe.get('country') or 'Unknown'} ({pe.get('country_code') or 'XX'}) [{pe.get('confidence', '').upper()}]")
+        for b in pe.get("basis", []): print(f"    * {b}")
+
+    print("\n--- AUTHENTICATION & TRACE RISK " + "-" * 38)
+    print(f"  SPF={a['spf']['result']} | DKIM={a['dkim']['result']} | DMARC={a['dmarc']['result']} => {a['summary'].upper()}")
+    print(f"  Risk Score   : {r['trace_risk_score']}/100 ({r['trace_risk_level'].upper()})")
+    for reason in r["reasons"]: print(f"   * {reason}")
     print()
+
+def main():
+    p = argparse.ArgumentParser(description="SIH26106 Trace Engine CLI & Batch Tracer")
+    p.add_argument("input_path", help="Path to .eml file or directory of .eml files")
+    p.add_argument("--offline", action="store_true", help="Skip online lookups (local GeoLite2 only)")
+    p.add_argument("--geolite-dir", default=None, help="Directory for GeoLite2 databases")
+    p.add_argument("--json", action="store_true", help="Output full JSON report")
+    p.add_argument("-o", "--output", default=None, help="Save batch output to JSON file")
+    args = p.parse_args()
+
+    inp = Path(args.input_path)
+    if inp.is_file():
+        report = analyze_email(inp.read_bytes(), geolite_dir=args.geolite_dir, use_online_geo=not args.offline)
+        print_single_report(report, args.json)
+    elif inp.is_dir():
+        files = [f for f in inp.rglob("*") if f.is_file() and f.suffix.lower() == ".eml"]
+        print(f"[*] Found {len(files)} .eml file(s) in {inp}. Processing...\n")
+        results = []
+        for i, f in enumerate(files, 1):
+            rep = analyze_email(f.read_bytes(), geolite_dir=args.geolite_dir, use_online_geo=not args.offline)
+            o = rep["origin"]
+            loc = rep.get("sender_location_estimate", {}).get("primary_estimate", {}).get("country") or (o.get("geo") or {}).get("country") or "Unknown"
+            print(f"[{i}/{len(files)}] {f.name:<30} IP: {str(o.get('probable_source_ip')):<15} Loc: {loc:<15} Risk: {rep['risk']['trace_risk_score']}/100")
+            results.append({"file": f.name, "report": rep})
+        if args.output:
+            Path(args.output).write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
+            print(f"\n[+] Saved {len(results)} reports to {args.output}")
+    else:
+        print(f"Error: {args.input_path} not found.")
+
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

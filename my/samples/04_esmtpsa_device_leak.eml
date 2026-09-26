@@ -1,0 +1,34 @@
+Delivered-To: victim@college.ac.in
+Received: from mail-relay.corporate-domain.in (mail-relay.corporate-domain.in [103.21.125.88])
+        by mx.college.ac.in with ESMTPS id relay123
+        for <victim@college.ac.in>;
+        Mon, 01 Sep 2025 11:30:15 +0530
+Received: from client-pc.corp ([103.21.125.88])
+        by mail-relay.corporate-domain.in with ESMTPSA id auth_submission_991
+        (authenticated as billing@corporate-domain.in)
+        for <victim@college.ac.in>;
+        Mon, 01 Sep 2025 11:30:10 +0530
+Authentication-Results: mx.college.ac.in;
+       spf=pass (sender IP is 103.21.125.88) smtp.mailfrom=billing@corporate-domain.in;
+       dkim=pass;
+       dmarc=pass (p=NONE) header.from=corporate-domain.in
+Received-SPF: pass (domain of billing@corporate-domain.in designates 103.21.125.88 as permitted sender) client-ip=103.21.125.88;
+X-Originating-IP: [103.21.125.88]
+From: Accounts Department <billing@corporate-domain.in>
+To: victim@college.ac.in
+Subject: Invoice & Payment Request for Consultancy Services
+Date: Mon, 01 Sep 2025 11:30:00 +0530
+Message-ID: <invoice-99238@corporate-domain.in>
+Content-Type: text/plain; charset="UTF-8"
+
+Dear Sir/Madam,
+
+Kindly remit the outstanding balance of INR 25,000/- (Rs. 25,000) for the consultancy project.
+
+Payment Options:
+- UPI ID: payment.clearing@okaxis
+- Bank Account: IFSC SBIN0001234
+- Helpline: +91 9876543210
+
+Thank you,
+Accounts Team
