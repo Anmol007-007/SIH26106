@@ -69,10 +69,13 @@ def _classify(res: dict) -> str:
 
 def _resolve_dir(d: Optional[str]) -> str:
     if d and os.path.isdir(d): return d
-    env = os.environ.get("GEOLITE2_DIR")
+    env = os.environ.get("GEOLITE2_DIR") or os.environ.get("GEOLITE_DIR")
     if env and os.path.isdir(env): return env
-    mod = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "geolite2")
-    return mod if os.path.isdir(mod) else "./geolite2"
+    base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for name in ("geolite", "geolite2"):
+        p = os.path.join(base, name)
+        if os.path.isdir(p): return p
+    return "./geolite"
 
 @lru_cache(maxsize=4096)
 def enrich_ip(ip: str, db_dir: Optional[str] = None, use_online: bool = True) -> str:
